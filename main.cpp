@@ -103,7 +103,7 @@ int cameraMotion(const std::string& input,
             cerr << "#" << frame_no << " Failed to retrieve frame #" << frame_no << endl;
         }
 
-        cout << getTimeStamp() << " recorded " << frame_no << " frames\r";
+        cout << getTimeStamp() << " recorded " << frame_no << " frames." << endl;
 
         tmp_frame.copyTo(c_frame);
         cv::cvtColor(c_frame, c_frame, CV_RGB2GRAY);
@@ -128,7 +128,6 @@ int cameraMotion(const std::string& input,
             os << prefix << getTimeStamp() << ".jpg";
             cv::imwrite(os.str(), b_org_frame);
 
-            cout << endl;
             cout << "Detected motion - Deviation: " << stddev[0] << ". Stored " << os.str() << endl;
         }
 
@@ -138,7 +137,6 @@ int cameraMotion(const std::string& input,
         int64 duration = now_tm - start_tm;
         duration /= 1000000000;
         if(int(duration) >= timeout) {
-            cout << endl;
             cout << "Recording ended after " << duration << " seconds." << endl;
             return EXIT_SUCCESS;
         }
