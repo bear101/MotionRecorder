@@ -20,18 +20,17 @@ string getTimeStamp(const std::string& space = "_") {
     timeinfo = localtime ( &rawtime );
 
     ostringstream os;
-    os << setw(2);
-    os << setfill('0');
     os << timeinfo->tm_year + 1900 << "";
-    os << timeinfo->tm_mon + 1 << "";
-    os << timeinfo->tm_mday << space;
-    os << timeinfo->tm_hour << "";
-    os << timeinfo->tm_min << "";
-    os << timeinfo->tm_sec;
+    os << setfill('0') << setw(2) << timeinfo->tm_mon + 1 << "";
+    os << setfill('0') << setw(2) << timeinfo->tm_mday << space;
+    os << setfill('0') << setw(2) << timeinfo->tm_hour << "";
+    os << setfill('0') << setw(2) << timeinfo->tm_min << "";
+    os << setfill('0') << setw(2) << timeinfo->tm_sec;
     return os.str();
 }
 
 int markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
+
     int number_of_changes = 0;
     int y_start = 0, y_stop = motion_frame.rows;
     int x_start = 0, x_stop = motion_frame.cols;
@@ -67,7 +66,8 @@ int markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
 int cameraMotion(const std::string& input,
                  double deviation,
                  const std::string& out_dir,
-                 int timeout) {
+                 int timeout,
+                 const std::string& prefix) {
 
     cv::VideoCapture camera;
 
@@ -125,7 +125,7 @@ int cameraMotion(const std::string& input,
 
             ostringstream os;
             os << out_dir << "/";
-            os << "motion_" << getTimeStamp() << ".jpg";
+            os << prefix << getTimeStamp() << ".jpg";
             cv::imwrite(os.str(), b_org_frame);
 
             cout << endl;
@@ -140,9 +140,24 @@ int cameraMotion(const std::string& input,
         if(int(duration) >= timeout) {
             cout << endl;
             cout << "Recording ended after " << duration << " seconds." << endl;
-            break;
+            return EXIT_SUCCESS;
         }
     }
+
+    return EXIT_FAILURE;
+}
+
+void printUsage() {
+    cout << "-d, --deviation ARG" << endl;
+    cout << "\t" << "Standard deviation" << endl;
+    cout << "-i, --input ARG" << endl;
+    cout << "\t" << "URL to read as input." << endl;
+    cout << "-o, --output" << endl;
+    cout << "\t" << "Output directory for motion pictures" << endl;
+    cout << "-p, --prefix" << endl;
+    cout << "\t" << "File name prefix" << endl;
+    cout << "-t, --timeout" << endl;
+    cout << "\t" << "Duration in seconds" << endl;
 }
 
 int main(int argc, char** argv) {
@@ -150,7 +165,7 @@ int main(int argc, char** argv) {
     int c;
     int digit_optind = 0;
 
-    string input, output_dir;
+    string input, output_dir = ".", prefix = "motion_";
     int timeout = 0;
     double deviation = 3.0;
 
@@ -161,11 +176,12 @@ int main(int argc, char** argv) {
             {"deviation", required_argument, 0, 'd' },
             {"input", required_argument, 0, 'i' },
             {"output", required_argument, 0, 'o' },
+            {"prefix", required_argument, 0, 'p' },
             {"timeout", required_argument, 0, 't' },
             {0, 0, 0, 0 }
         };
 
-        c = getopt_long(argc, argv, "d:i:o:t:",
+        c = getopt_long(argc, argv, "d:i:o:p:t:",
                         long_options, &option_index);
         if (c == -1)
             break;
@@ -183,6 +199,9 @@ int main(int argc, char** argv) {
         case 'o' :
             output_dir = optarg;
             break;
+        case 'p' :
+            prefix = optarg;
+            break;
         case 't' :
             timeout = atoi(optarg);
             break;
@@ -190,6 +209,10 @@ int main(int argc, char** argv) {
     }
 
     if(input.size()) {
-        cameraMotion(input, deviation, output_dir, timeout);
+        return cameraMotion(input, deviation, output_dir, timeout, prefix);
     }
+    else {
+        printUsage();
+    }
+    return 0;
 }
