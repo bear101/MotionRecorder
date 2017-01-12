@@ -71,27 +71,41 @@ int cameraMotion(const std::string& input,
 
     cv::VideoCapture camera;
 
-    if(!camera.open(input)) {
-        cerr << "Failed to open camera" << endl;
-        return EXIT_FAILURE;
-    }
 
     cv::Mat a_frame, b_frame, c_frame, d1_frame, d2_frame, motion_frame, b_org_frame;
-    camera >> a_frame;
-    camera >> b_frame;
-    camera >> c_frame;
-
-    b_org_frame = b_frame;
-
-    cv::cvtColor(a_frame, a_frame, CV_RGB2GRAY);
-    cv::cvtColor(b_frame, b_frame, CV_RGB2GRAY);
-    cv::cvtColor(c_frame, c_frame, CV_RGB2GRAY);
 
     int frame_no = 0;
 
-    int64 start_tm = cv::getTickCount(), now_tm;
+    int64 start_tm = cv::getTickCount();
+    int64 duration = 0;
 
-    while(camera.grab()) {
+    while(int(duration) <= timeout) {
+
+        if(!camera.isOpened()) {
+
+            if(!camera.open(input)) {
+                cerr << "Failed to open camera" << endl;
+                sleep(1);
+                continue;
+            }
+
+            camera >> a_frame;
+            camera >> b_frame;
+            camera >> c_frame;
+
+            b_org_frame = b_frame;
+
+            cv::cvtColor(a_frame, a_frame, CV_RGB2GRAY);
+            cv::cvtColor(b_frame, b_frame, CV_RGB2GRAY);
+            cv::cvtColor(c_frame, c_frame, CV_RGB2GRAY);
+        }
+
+        if(!camera.grab()) {
+            camera.release();
+            cerr << "Failed to get frame" << endl;
+            sleep(1);
+            continue;
+        }
 
         ++frame_no;
 
@@ -101,9 +115,10 @@ int cameraMotion(const std::string& input,
         cv::Mat tmp_frame;
         if(!camera.retrieve(tmp_frame)) {
             cerr << "#" << frame_no << " Failed to retrieve frame #" << frame_no << endl;
+            camera.release();
+            sleep(1);
+            continue;
         }
-
-        cout << getTimeStamp() << " recorded " << frame_no << " frames." << endl;
 
         tmp_frame.copyTo(c_frame);
         cv::cvtColor(c_frame, c_frame, CV_RGB2GRAY);
@@ -120,6 +135,8 @@ int cameraMotion(const std::string& input,
         cv::Scalar mean, stddev;
         cv::meanStdDev(motion_frame, mean, stddev);
 
+        cout << getTimeStamp() << " recorded " << frame_no << " frames. Deviation is " << stddev[0] << "." << endl;
+
         if(stddev[0] >= deviation) {
             int n_changes = markMotion(motion_frame, b_org_frame);
 
@@ -133,14 +150,11 @@ int cameraMotion(const std::string& input,
 
         b_org_frame = tmp_frame;
 
-        now_tm = cv::getTickCount();
-        int64 duration = now_tm - start_tm;
+        duration = cv::getTickCount() - start_tm;
         duration /= 1000000000;
-        if(int(duration) >= timeout) {
-            cout << "Recording ended after " << duration << " seconds." << endl;
-            return EXIT_SUCCESS;
-        }
     }
+
+    cout << "Recording ended after " << duration << " seconds." << endl;
 
     return EXIT_FAILURE;
 }
