@@ -7,6 +7,7 @@
 #include <iomanip>
 
 #include <getopt.h>
+#include <unistd.h>
 #include <time.h>
 
 using namespace std;
