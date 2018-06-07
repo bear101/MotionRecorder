@@ -25,9 +25,8 @@ ExternalProject_Add (opencv
   GIT_REPOSITORY https://github.com/opencv/opencv
   GIT_TAG 3.4.1
   #  DEPENDS ffmpeg
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-  #-DFFMPEG_INCLUDE_DIRS=$ENV{PWD}/libs/ffmpeg/include -DFFMPEG_LIBRARY_DIRS=$ENV{PWD}/libs/ffmpeg/lib -DFFMPEG_LIBRARIES="" -DCMAKE_C_FLAGS="-I$ENV{PWD}/libs/ffmpeg/include" -DCMAKE_CXX_FLAGS="-I$ENV{PWD}/libs/ffmpeg/include" -DCMAKE_SHARED_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib" -DCMAKE_EXE_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib" -DCMAKE_MODULE_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib"
-  BUILD_COMMAND true # make -j2 install
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv
+  BUILD_COMMAND make -j2 install
   COMMAND echo done)
 
 # paths 
