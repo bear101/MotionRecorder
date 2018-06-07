@@ -4,6 +4,10 @@ project(MotionRecorder)
 
 include(ExternalProject)
 
+if (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+  set (CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 ExternalProject_Add(ffmpeg
   GIT_REPOSITORY https://github.com/FFmpeg/FFmpeg
   GIT_TAG n4.0
@@ -12,12 +16,18 @@ ExternalProject_Add(ffmpeg
   BUILD_COMMAND make -j2 install
   COMMAND echo done)
 
-ExternalProject_Add(opencv
+message ("To build using custom FFmpeg set the following env:
+  - export LD_LIBRARY_PATH=$PWD/libs/ffmpeg/lib
+  - export PKG_CONFIG_PATH=$PWD/libs/ffmpeg/lib/pkgconfig
+  - export PKG_CONFIG_LIBDIR=$PWD/libs/ffmpeg/lib")
+
+ExternalProject_Add (opencv
   GIT_REPOSITORY https://github.com/opencv/opencv
   GIT_TAG 3.4.1
   #  DEPENDS ffmpeg
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv -DCMAKE_C_FLAGS="-I$ENV{PWD}/libs/ffmpeg/include" -DCMAKE_CXX_FLAGS="-I$ENV{PWD}/libs/ffmpeg/include" -DCMAKE_SHARED_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib"
-  BUILD_COMMAND make -j2 install
+  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+  #-DFFMPEG_INCLUDE_DIRS=$ENV{PWD}/libs/ffmpeg/include -DFFMPEG_LIBRARY_DIRS=$ENV{PWD}/libs/ffmpeg/lib -DFFMPEG_LIBRARIES="" -DCMAKE_C_FLAGS="-I$ENV{PWD}/libs/ffmpeg/include" -DCMAKE_CXX_FLAGS="-I$ENV{PWD}/libs/ffmpeg/include" -DCMAKE_SHARED_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib" -DCMAKE_EXE_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib" -DCMAKE_MODULE_LINKER_FLAGS="-L$ENV{PWD}/libs/ffmpeg/lib"
+  BUILD_COMMAND true # make -j2 install
   COMMAND echo done)
 
 # paths 
