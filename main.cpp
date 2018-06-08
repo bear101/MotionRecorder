@@ -236,8 +236,9 @@ int main(int argc, char** argv) {
             timeout = atoi(optarg);
             break;
         case 'b' :
+            std::string tmps = std::string(optarg);
             std::smatch cm;
-            if (std::regex_search(std::string(optarg), cm, std::regex("^([0-9]+),([0-9]+);([0-9]+),([0-9]+)$"))) {
+            if (std::regex_search(tmps, cm, std::regex("^([0-9]+),([0-9]+);([0-9]+),([0-9]+)$"))) {
                 p1 = cv::Point(atoi(std::string(cm[1]).c_str()), atoi(std::string(cm[2]).c_str()));
                 p2 = cv::Point(atoi(std::string(cm[3]).c_str()), atoi(std::string(cm[4]).c_str()));
             } else {
