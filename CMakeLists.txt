@@ -8,7 +8,17 @@ if (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-ExternalProject_Add(ffmpeg
+# paths 
+include_directories ($ENV{PWD}/libs/opencv/include)
+                     
+link_directories ($ENV{PWD}/libs/opencv/lib)
+
+set (OPENCV_LIBRARIES opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio opencv_video)
+
+add_executable (motion main.cpp)
+target_link_libraries (motion ${OPENCV_LIBRARIES})
+
+externalproject_add (ffmpeg
   GIT_REPOSITORY https://github.com/FFmpeg/FFmpeg
   GIT_TAG n4.0
   BUILD_IN_SOURCE 1
@@ -21,21 +31,10 @@ message ("To build using custom FFmpeg set the following env:
   - export PKG_CONFIG_PATH=$PWD/libs/ffmpeg/lib/pkgconfig
   - export PKG_CONFIG_LIBDIR=$PWD/libs/ffmpeg/lib")
 
-ExternalProject_Add (opencv
+externalproject_add (opencv
   GIT_REPOSITORY https://github.com/opencv/opencv
   GIT_TAG 3.4.1
   #  DEPENDS ffmpeg
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv
   BUILD_COMMAND make -j2 install
   COMMAND echo done)
-
-# paths 
-include_directories ($ENV{PWD}/libs/opencv/include)
-                     
-link_directories ($ENV{PWD}/libs/opencv/lib)
-
-set (OPENCV_LIBRARIES opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio)
-
-add_executable (motion main.cpp)
-target_link_libraries (motion ${OPENCV_LIBRARIES})
-

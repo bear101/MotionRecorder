@@ -1,6 +1,8 @@
-
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/opencv.hpp>
+#include <opencv2/video.hpp>
+#include <opencv2/videoio.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -72,9 +74,14 @@ int cameraMotion(const std::string& input,
 
     cv::VideoCapture camera;
 
+    cv::Mat frame,
+        fgMaskMOG2,
+        motion_frame;
 
-    cv::Mat a_frame, b_frame, c_frame, d1_frame, d2_frame, motion_frame, b_org_frame;
-
+    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2();
+    
+    pMOG2->setShadowValue(0);
+    
     int frame_no = 0;
 
     int64 start_tm = cv::getTickCount();
@@ -89,16 +96,6 @@ int cameraMotion(const std::string& input,
                 sleep(1);
                 continue;
             }
-
-            camera >> a_frame;
-            camera >> b_frame;
-            camera >> c_frame;
-
-            b_org_frame = b_frame;
-
-            cv::cvtColor(a_frame, a_frame, CV_RGB2GRAY);
-            cv::cvtColor(b_frame, b_frame, CV_RGB2GRAY);
-            cv::cvtColor(c_frame, c_frame, CV_RGB2GRAY);
         }
 
         if(!camera.grab()) {
@@ -110,28 +107,34 @@ int cameraMotion(const std::string& input,
 
         ++frame_no;
 
-        a_frame = b_frame;
-        b_frame = c_frame;
-
-        cv::Mat tmp_frame;
-        if(!camera.retrieve(tmp_frame)) {
+        if(!camera.retrieve(frame)) {
             cerr << "#" << frame_no << " Failed to retrieve frame #" << frame_no << endl;
             camera.release();
             sleep(1);
             continue;
         }
 
-        tmp_frame.copyTo(c_frame);
-        cv::cvtColor(c_frame, c_frame, CV_RGB2GRAY);
+        /* update the background model */
+        pMOG2->apply(frame, fgMaskMOG2);
 
-        cv::absdiff(c_frame, b_frame, d1_frame);
-        cv::absdiff(b_frame, a_frame, d2_frame);
-        cv::bitwise_and(d1_frame, d2_frame, motion_frame);
+        ostringstream os1, os2, os3;
+        os1 << out_dir << "/";
+        os1 << frame_no << "_org_" << getTimeStamp() << ".jpg";
+        cv::imwrite(os1.str(), frame);
 
-        cv::threshold(motion_frame, motion_frame, 35, 255, CV_THRESH_BINARY);
+        os2 << out_dir << "/";
+        os2 << frame_no << "_fg_" << getTimeStamp() << ".jpg";
+        cv::imwrite(os2.str(), fgMaskMOG2);
 
-        cv::Mat kernel_ero = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2,2));
-        cv::erode(motion_frame, motion_frame, kernel_ero);
+        motion_frame = fgMaskMOG2;
+        
+        // cv::threshold(motion_frame, motion_frame, 35, 255, CV_THRESH_BINARY);
+        // cv::Mat kernel_ero = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2,2));
+        // cv::erode(motion_frame, motion_frame, kernel_ero);
+
+        os3 << out_dir << "/";
+        os3 << frame_no << "_erode_" << getTimeStamp() << ".jpg";
+        cv::imwrite(os3.str(), motion_frame);
 
         cv::Scalar mean, stddev;
         cv::meanStdDev(motion_frame, mean, stddev);
@@ -139,17 +142,15 @@ int cameraMotion(const std::string& input,
         cout << getTimeStamp() << " recorded " << frame_no << " frames. Deviation is " << stddev[0] << "." << endl;
 
         if(stddev[0] >= deviation) {
-            int n_changes = markMotion(motion_frame, b_org_frame);
+            int n_changes = markMotion(motion_frame, frame);
 
             ostringstream os;
             os << out_dir << "/";
-            os << prefix << getTimeStamp() << ".jpg";
-            cv::imwrite(os.str(), b_org_frame);
+            os << frame_no << "_" << prefix << getTimeStamp() << ".jpg";
+            cv::imwrite(os.str(), frame);
 
             cout << "Detected motion - Deviation: " << stddev[0] << ". Stored " << os.str() << endl;
         }
-
-        b_org_frame = tmp_frame;
 
         duration = cv::getTickCount() - start_tm;
         duration /= 1000000000;
