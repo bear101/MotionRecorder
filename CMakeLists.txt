@@ -34,12 +34,8 @@ include_directories ($ENV{PWD}/libs/opencv/include)
                      
 link_directories ($ENV{PWD}/libs/opencv/lib)
 
-# SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR})
 set (OPENCV_LIBRARIES opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio)
 
 add_executable (motion main.cpp)
 target_link_libraries (motion ${OPENCV_LIBRARIES})
-
-# add_dependencies(motion opencv)
-# SET(CMAKE_BUILD_TYPE Release)
 
