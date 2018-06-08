@@ -4,6 +4,8 @@ project(MotionRecorder)
 
 include(ExternalProject)
 
+set (CMAKE_CXX_STANDARD 11)
+
 if (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()

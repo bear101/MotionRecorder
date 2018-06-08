@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <regex>
 
 #include <getopt.h>
 #include <unistd.h>
@@ -67,6 +68,7 @@ int markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
 }
 
 int cameraMotion(const std::string& input,
+                 cv::Point p1, cv::Point p2,
                  double deviation,
                  const std::string& out_dir,
                  int timeout,
@@ -74,16 +76,17 @@ int cameraMotion(const std::string& input,
 
     cv::VideoCapture camera;
 
-    cv::Mat frame,
-        fgMaskMOG2,
-        motion_frame;
+    cv::Mat org_frame, frame, fgMaskMOG2;
 
     cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2();
-    
+    /* we don't care about shadows */
     pMOG2->setShadowValue(0);
     
-    int frame_no = 0;
+    cout << "Variance threshold: " << pMOG2->getVarThreshold() << endl;
 
+    // pMOG2->setVarThreshold(64);
+    
+    int frame_no = 0;
     int64 start_tm = cv::getTickCount();
     int64 duration = 0;
 
@@ -107,47 +110,58 @@ int cameraMotion(const std::string& input,
 
         ++frame_no;
 
-        if(!camera.retrieve(frame)) {
+        if(!camera.retrieve(org_frame)) {
             cerr << "#" << frame_no << " Failed to retrieve frame #" << frame_no << endl;
             camera.release();
             sleep(1);
             continue;
         }
 
+        org_frame.copyTo(frame);
+
+        if (p1 != p2) {
+            rectangle(frame, p1, p2, cv::Scalar(255, 255, 255), -1);
+        }
+        
         /* update the background model */
         pMOG2->apply(frame, fgMaskMOG2);
 
-        ostringstream os1, os2, os3;
+        ostringstream os1;
         os1 << out_dir << "/";
         os1 << frame_no << "_org_" << getTimeStamp() << ".jpg";
+        cv::imwrite(os1.str(), org_frame);
+
+        os1.str("");
+        os1 << out_dir << "/";
+        os1 << frame_no << "_blank_" << getTimeStamp() << ".jpg";
         cv::imwrite(os1.str(), frame);
-
-        os2 << out_dir << "/";
-        os2 << frame_no << "_fg_" << getTimeStamp() << ".jpg";
-        cv::imwrite(os2.str(), fgMaskMOG2);
-
-        motion_frame = fgMaskMOG2;
         
-        // cv::threshold(motion_frame, motion_frame, 35, 255, CV_THRESH_BINARY);
-        // cv::Mat kernel_ero = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(2,2));
-        // cv::erode(motion_frame, motion_frame, kernel_ero);
+        os1.str("");
+        os1 << out_dir << "/";
+        os1 << frame_no << "_fg_" << getTimeStamp() << ".jpg";
+        cv::imwrite(os1.str(), fgMaskMOG2);
 
-        os3 << out_dir << "/";
-        os3 << frame_no << "_erode_" << getTimeStamp() << ".jpg";
-        cv::imwrite(os3.str(), motion_frame);
+        // cv::threshold(motion_frame, motion_frame, 35, 255, CV_THRESH_BINARY);
+        cv::Mat kernel_ero = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4,4));
+        cv::erode(fgMaskMOG2, fgMaskMOG2, kernel_ero);
+
+        os1.str("");
+        os1 << out_dir << "/";
+        os1 << frame_no << "_erode_" << getTimeStamp() << ".jpg";
+        cv::imwrite(os1.str(), fgMaskMOG2);
 
         cv::Scalar mean, stddev;
-        cv::meanStdDev(motion_frame, mean, stddev);
+        cv::meanStdDev(fgMaskMOG2, mean, stddev);
 
         cout << getTimeStamp() << " recorded " << frame_no << " frames. Deviation is " << stddev[0] << "." << endl;
 
         if(stddev[0] >= deviation) {
-            int n_changes = markMotion(motion_frame, frame);
+            int n_changes = markMotion(fgMaskMOG2, org_frame);
 
             ostringstream os;
             os << out_dir << "/";
             os << frame_no << "_" << prefix << getTimeStamp() << ".jpg";
-            cv::imwrite(os.str(), frame);
+            cv::imwrite(os.str(), org_frame);
 
             cout << "Detected motion - Deviation: " << stddev[0] << ". Stored " << os.str() << endl;
         }
@@ -180,6 +194,7 @@ int main(int argc, char** argv) {
     int digit_optind = 0;
 
     string input, output_dir = ".", prefix = "motion_";
+    cv::Point p1, p2;
     int timeout = 0;
     double deviation = 3.0;
 
@@ -192,10 +207,11 @@ int main(int argc, char** argv) {
             {"output", required_argument, 0, 'o' },
             {"prefix", required_argument, 0, 'p' },
             {"timeout", required_argument, 0, 't' },
+            {"blank", required_argument, 0, 'b' },
             {0, 0, 0, 0 }
         };
 
-        c = getopt_long(argc, argv, "d:i:o:p:t:",
+        c = getopt_long(argc, argv, "d:i:o:p:t:b:",
                         long_options, &option_index);
         if (c == -1)
             break;
@@ -219,11 +235,20 @@ int main(int argc, char** argv) {
         case 't' :
             timeout = atoi(optarg);
             break;
+        case 'b' :
+            std::smatch cm;
+            if (std::regex_search(std::string(optarg), cm, std::regex("^([0-9]+),([0-9]+);([0-9]+),([0-9]+)$"))) {
+                p1 = cv::Point(atoi(std::string(cm[1]).c_str()), atoi(std::string(cm[2]).c_str()));
+                p2 = cv::Point(atoi(std::string(cm[3]).c_str()), atoi(std::string(cm[4]).c_str()));
+            } else {
+                cerr << "Invalid blanking area: " << optarg << endl;
+            }
+            break;
         }
     }
 
     if(input.size()) {
-        return cameraMotion(input, deviation, output_dir, timeout, prefix);
+        return cameraMotion(input, p1, p2, deviation, output_dir, timeout, prefix);
     }
     else {
         printUsage();
