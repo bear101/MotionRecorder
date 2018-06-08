@@ -81,11 +81,7 @@ int cameraMotion(const std::string& input,
     cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2();
     /* we don't care about shadows */
     pMOG2->setShadowValue(0);
-    
-    cout << "Variance threshold: " << pMOG2->getVarThreshold() << endl;
 
-    // pMOG2->setVarThreshold(64);
-    
     int frame_no = 0;
     int64 start_tm = cv::getTickCount();
     int64 duration = 0;
@@ -122,10 +118,11 @@ int cameraMotion(const std::string& input,
         if (p1 != p2) {
             rectangle(frame, p1, p2, cv::Scalar(255, 255, 255), -1);
         }
-        
+
         /* update the background model */
         pMOG2->apply(frame, fgMaskMOG2);
 
+#if defined(DEBUG)
         ostringstream os1;
         os1 << out_dir << "/";
         os1 << frame_no << "_org_" << getTimeStamp() << ".jpg";
@@ -135,20 +132,23 @@ int cameraMotion(const std::string& input,
         os1 << out_dir << "/";
         os1 << frame_no << "_blank_" << getTimeStamp() << ".jpg";
         cv::imwrite(os1.str(), frame);
-        
+
         os1.str("");
         os1 << out_dir << "/";
         os1 << frame_no << "_fg_" << getTimeStamp() << ".jpg";
         cv::imwrite(os1.str(), fgMaskMOG2);
+#endif
 
         // cv::threshold(motion_frame, motion_frame, 35, 255, CV_THRESH_BINARY);
         cv::Mat kernel_ero = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(4,4));
         cv::erode(fgMaskMOG2, fgMaskMOG2, kernel_ero);
 
+#if defined(DEBUG)
         os1.str("");
         os1 << out_dir << "/";
         os1 << frame_no << "_erode_" << getTimeStamp() << ".jpg";
         cv::imwrite(os1.str(), fgMaskMOG2);
+#endif
 
         cv::Scalar mean, stddev;
         cv::meanStdDev(fgMaskMOG2, mean, stddev);
@@ -160,7 +160,7 @@ int cameraMotion(const std::string& input,
 
             ostringstream os;
             os << out_dir << "/";
-            os << frame_no << "_" << prefix << getTimeStamp() << ".jpg";
+            os << prefix << getTimeStamp() << ".jpg";
             cv::imwrite(os.str(), org_frame);
 
             cout << "Detected motion - Deviation: " << stddev[0] << ". Stored " << os.str() << endl;
