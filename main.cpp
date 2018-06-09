@@ -176,6 +176,8 @@ int cameraMotion(const std::string& input,
 }
 
 void printUsage() {
+    cout << "-b, --blank ARG" << endl;
+    cout << "\t" << "Top-left, bottom-right coordinates; format: \"10,10;100,40\"" << endl;
     cout << "-d, --deviation ARG" << endl;
     cout << "\t" << "Standard deviation" << endl;
     cout << "-i, --input ARG" << endl;
