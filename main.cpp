@@ -78,7 +78,7 @@ int cameraMotion(const std::string& input,
 
     cv::Mat org_frame, frame, fgMaskMOG2;
 
-    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2();
+    cv::Ptr<cv::BackgroundSubtractorMOG2> pMOG2 = cv::createBackgroundSubtractorMOG2(16);
     /* we don't care about shadows */
     pMOG2->setShadowValue(0);
 
