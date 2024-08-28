@@ -33,9 +33,8 @@ string getTimeStamp(const std::string& space = "_") {
     return os.str();
 }
 
-int markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
+cv::Rect markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
 
-    int number_of_changes = 0;
     int y_start = 0, y_stop = motion_frame.rows;
     int x_start = 0, x_stop = motion_frame.cols;
 
@@ -45,7 +44,6 @@ int markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
     for(int j = y_start; j < y_stop; j+=2) {
         for(int i = x_start; i < x_stop; i+=2) {
             if(motion_frame.at<uchar>(j,i) == 255) {
-                number_of_changes++;
                 if(min_x>i) min_x = i;
                 if(max_x<i) max_x = i;
                 if(min_y>j) min_y = j;
@@ -54,17 +52,15 @@ int markMotion(const cv::Mat& motion_frame, cv::Mat& org_frame) {
         }
     }
 
-    if(number_of_changes) {
-        min_x = std::max(min_x - 10, 0);
-        min_y = std::max(min_y - 10, 0);
-        max_x = std::min(max_x + 10, motion_frame.cols - 1);
-        max_y = std::min(max_y + 10, motion_frame.rows - 1);
+    min_x = std::max(min_x - 10, 0);
+    min_y = std::max(min_y - 10, 0);
+    max_x = std::min(max_x + 10, motion_frame.cols - 1);
+    max_y = std::min(max_y + 10, motion_frame.rows - 1);
 
-        cv::Rect rect(cv::Point(min_x, min_y), cv::Point(max_x, max_y));
-        cv::rectangle(org_frame, rect, cv::Scalar(0, 255, 255), 1);
-    }
+    cv::Rect rect(cv::Point(min_x, min_y), cv::Point(max_x, max_y));
+    cv::rectangle(org_frame, rect, cv::Scalar(0, 255, 255), 1);
 
-    return number_of_changes;
+    return rect;
 }
 
 int cameraMotion(const std::string& input,
@@ -156,14 +152,19 @@ int cameraMotion(const std::string& input,
         cout << getTimeStamp() << " recorded " << frame_no << " frames. Deviation is " << stddev[0] << "." << endl;
 
         if(stddev[0] >= deviation) {
-            int n_changes = markMotion(fgMaskMOG2, org_frame);
+            cv::Rect r = markMotion(fgMaskMOG2, org_frame);
 
-            ostringstream os;
-            os << out_dir << "/";
-            os << prefix << getTimeStamp() << ".jpg";
-            cv::imwrite(os.str(), org_frame);
+            if (r.width * r.height >= (org_frame.rows * org_frame.cols) / 2) {
+                cout << "Skipped motion frame of size " << r.width << "x" << r.height << endl;
+            }
+            else {
+                ostringstream os;
+                os << out_dir << "/";
+                os << prefix << getTimeStamp() << ".jpg";
+                cv::imwrite(os.str(), org_frame);
 
-            cout << "Detected motion - Deviation: " << stddev[0] << ". Stored " << os.str() << endl;
+                cout << "Detected motion - Deviation: " << stddev[0] << ". Stored " << os.str() << endl;
+            }
         }
 
         duration = cv::getTickCount() - start_tm;
