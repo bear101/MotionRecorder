@@ -35,7 +35,7 @@ message ("To build using custom FFmpeg set the following env:
 
 externalproject_add (opencv
   GIT_REPOSITORY https://github.com/opencv/opencv
-  GIT_TAG 3.4.1
+  GIT_TAG 3.4.19
   #  DEPENDS ffmpeg
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv
   BUILD_COMMAND make -j2 install
