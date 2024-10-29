@@ -4,39 +4,24 @@ project(MotionRecorder)
 
 include(ExternalProject)
 
-set (CMAKE_CXX_STANDARD 11)
-
 if (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
   set (CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-# paths 
-include_directories ($ENV{PWD}/libs/opencv/include)
+set (OPENCV_LIBRARIES opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio opencv_video)
+
+ExternalProject_Add (opencv
+  GIT_REPOSITORY    https://github.com/opencv/opencv
+  GIT_TAG           4.10.0
+  INSTALL_DIR       $ENV{PWD}/libs/opencv
+  CMAKE_ARGS        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF
+  BUILD_COMMAND     ${CMAKE_COMMAND} --build . --target install
+  BUILD_BYPRODUCTS  ${OPENCV_LIBRARIES})
+
+include_directories ($ENV{PWD}/libs/opencv/include/opencv4)
                      
 link_directories ($ENV{PWD}/libs/opencv/lib)
-
-set (OPENCV_LIBRARIES opencv_core opencv_imgproc opencv_imgcodecs opencv_videoio opencv_video)
 
 add_executable (motion main.cpp)
 target_link_libraries (motion ${OPENCV_LIBRARIES})
 
-externalproject_add (ffmpeg
-  GIT_REPOSITORY https://github.com/FFmpeg/FFmpeg
-  GIT_TAG n4.0
-  BUILD_IN_SOURCE 1
-  CONFIGURE_COMMAND ./configure --prefix=$ENV{PWD}/libs/ffmpeg --enable-shared --disable-doc
-  BUILD_COMMAND make -j2 install
-  COMMAND echo done)
-
-message ("To build using custom FFmpeg set the following env:
-  - export LD_LIBRARY_PATH=$PWD/libs/ffmpeg/lib
-  - export PKG_CONFIG_PATH=$PWD/libs/ffmpeg/lib/pkgconfig
-  - export PKG_CONFIG_LIBDIR=$PWD/libs/ffmpeg/lib")
-
-externalproject_add (opencv
-  GIT_REPOSITORY https://github.com/opencv/opencv
-  GIT_TAG 3.4.19
-  #  DEPENDS ffmpeg
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=$ENV{PWD}/libs/opencv
-  BUILD_COMMAND make -j2 install
-  COMMAND echo done)
